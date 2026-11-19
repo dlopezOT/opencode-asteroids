@@ -116,14 +116,23 @@ class Asteroid {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
-    ctx.strokeStyle = this.isShootingStar ? '#ff0' : '#fff';
+    
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
+    
     ctx.beginPath();
     ctx.moveTo(this.verts[0][0], this.verts[0][1]);
     for (let i = 1; i < this.verts.length; i++)
       ctx.lineTo(this.verts[i][0], this.verts[i][1]);
     ctx.closePath();
+
+    if (this.isShootingStar) {
+        ctx.fillStyle = '#ff0';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+    } else {
+        ctx.strokeStyle = '#fff';
+    }
     ctx.stroke();
     ctx.restore();
   }
@@ -298,9 +307,7 @@ function spawnAsteroids(count) {
       y = rand(0, H);
     } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
     
-    // 10% de probabilidad de que sea una estrella fugaz
-    const isShootingStar = Math.random() < 0.1;
-    asteroids.push(new Asteroid(x, y, 3, isShootingStar));
+    asteroids.push(new Asteroid(x, y, 3));
   }
 }
 
@@ -314,6 +321,7 @@ function initGame() {
   lives  = 3;
   level  = 1;
   state  = 'playing';
+  shootingStarTimer = 0;
   spawnAsteroids(4);
 }
 
@@ -342,8 +350,27 @@ function killShip() {
   }
 }
 
+let shootingStarTimer = 0;
+
+function spawnShootingStar() {
+    const x = rand(0, W);
+    const y = rand(0, H);
+    asteroids.push(new Asteroid(x, y, 2, true)); // Tamaño 2 para que sea distinta
+}
+
 // ── Update ────────────────────────────────────────────────────────────────────
 function update(dt) {
+  // ... (código existente hasta el final de la función update)
+
+  // Spawn Shooting Star
+  shootingStarTimer += dt;
+  if (shootingStarTimer > 10) {
+      spawnShootingStar();
+      shootingStarTimer = 0;
+  }
+
+  // ...
+
   if (state === 'gameover') {
     if (pressed('Space')) initGame();
     particles.forEach(p => p.update(dt));
