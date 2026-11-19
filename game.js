@@ -63,15 +63,19 @@ const SPEEDS = [0, 85, 55, 32];   // velocidad base por tamaño
 const POINTS = [0, 100, 50, 20];  // puntos por tamaño
 
 class Asteroid {
-  constructor(x, y, size = 3) {
+  constructor(x, y, size = 3, isShootingStar = false) {
     this.x    = x;
     this.y    = y;
     this.size = size;
     this.radius = RADII[size];
     this.dead = false;
+    this.isShootingStar = isShootingStar;
+    this.ttl = isShootingStar ? 5 : Infinity; // Desaparece tras 5 segundos
 
     const angle = rand(0, Math.PI * 2);
-    const speed = SPEEDS[size] + rand(-15, 15);
+    // Velocidad aumentada si es estrella fugaz
+    const speedMultiplier = isShootingStar ? 2.5 : 1;
+    const speed = (SPEEDS[size] + rand(-15, 15)) * speedMultiplier;
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.rotSpeed = rand(-1.2, 1.2);
@@ -91,10 +95,17 @@ class Asteroid {
     this.x   = wrap(this.x + this.vx * dt, W);
     this.y   = wrap(this.y + this.vy * dt, H);
     this.rot += this.rotSpeed * dt;
+    
+    if (this.isShootingStar) {
+        this.ttl -= dt;
+        if (this.ttl <= 0) this.dead = true;
+    }
   }
 
   split() {
     if (this.size <= 1) return [];
+    // Las estrellas fugaces no se dividen al ser destruidas (opcional)
+    if (this.isShootingStar) return [];
     return [
       new Asteroid(this.x, this.y, this.size - 1),
       new Asteroid(this.x, this.y, this.size - 1),
@@ -105,7 +116,7 @@ class Asteroid {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = this.isShootingStar ? '#ff0' : '#fff';
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
     ctx.beginPath();
@@ -286,7 +297,10 @@ function spawnAsteroids(count) {
       x = rand(0, W);
       y = rand(0, H);
     } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
-    asteroids.push(new Asteroid(x, y, 3));
+    
+    // 10% de probabilidad de que sea una estrella fugaz
+    const isShootingStar = Math.random() < 0.1;
+    asteroids.push(new Asteroid(x, y, 3, isShootingStar));
   }
 }
 
@@ -384,8 +398,8 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
-        explode(a.x, a.y, a.size * 5);
+        score += POINTS[a.size] * (a.isShootingStar ? 5 : 1);
+        explode(a.x, a.y, a.size * (a.isShootingStar ? 10 : 5));
         newAsteroids.push(...a.split());
       }
     }
